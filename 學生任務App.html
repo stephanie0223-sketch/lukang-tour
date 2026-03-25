@@ -1,0 +1,1261 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>鹿港英語導覽 — 學生任務 App</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: #f5f5f4; }
+    ::-webkit-scrollbar-thumb { background: #d6d3d1; border-radius: 4px; }
+    @keyframes slideUp {
+      from { opacity: 0; transform: translateX(-50%) translateY(16px); }
+      to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+    }
+    .dict-card { animation: slideUp 0.22s ease-out forwards; }
+    @keyframes fadeIn {
+      from { opacity: 0; } to { opacity: 1; }
+    }
+    .fade-in { animation: fadeIn 0.3s ease-out; }
+    .hw { display:inline; cursor:pointer; font-weight:700; color:#b91c1c;
+          border-bottom:2px solid #fca5a5; padding:0 2px; border-radius:3px;
+          transition:background 0.15s; }
+    .hw:hover { background:#fee2e2; }
+    .plain-w { display:inline; cursor:pointer; border-radius:3px; padding:0 1px;
+               transition:background 0.15s; }
+    .plain-w:hover { background:#fef3c7; color:#92400e; }
+  </style>
+</head>
+<body class="bg-orange-50 min-h-screen">
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useEffect, useCallback } = React;
+
+// ══════════════════════════════════════════════════════════
+//  VOCABULARY DATABASE (互動字典)
+// ══════════════════════════════════════════════════════════
+const vocabDB = {
+  "i":{"ch":"我","pos":"pron."},"me":{"ch":"我(受格)","pos":"pron."},"my":{"ch":"我的","pos":"pron."},"you":{"ch":"你；你們","pos":"pron."},"your":{"ch":"你的","pos":"pron."},"he":{"ch":"他","pos":"pron."},"his":{"ch":"他的","pos":"pron."},"she":{"ch":"她","pos":"pron."},"her":{"ch":"她的；她","pos":"pron."},"it":{"ch":"它","pos":"pron."},"its":{"ch":"它的","pos":"pron."},"we":{"ch":"我們","pos":"pron."},"our":{"ch":"我們的","pos":"pron."},"they":{"ch":"他們","pos":"pron."},"their":{"ch":"他們的","pos":"pron."},"this":{"ch":"這個","pos":"pron."},"that":{"ch":"那個","pos":"pron."},"these":{"ch":"這些","pos":"pron."},"those":{"ch":"那些","pos":"pron."},
+  "is":{"ch":"是","pos":"v."},"am":{"ch":"是","pos":"v."},"are":{"ch":"是","pos":"v."},"was":{"ch":"是(過去式)","pos":"v."},"were":{"ch":"是(過去式)","pos":"v."},"be":{"ch":"是；成為","pos":"v."},"been":{"ch":"是(過去分詞)","pos":"v."},"do":{"ch":"做；助動詞","pos":"v."},"does":{"ch":"做；助動詞","pos":"v."},"did":{"ch":"做(過去式)","pos":"v."},"have":{"ch":"有；已經","pos":"v."},"has":{"ch":"有；已經","pos":"v."},"had":{"ch":"有(過去式)","pos":"v."},"can":{"ch":"可以；能","pos":"aux."},"will":{"ch":"將會","pos":"aux."},"would":{"ch":"將會(過去式)","pos":"aux."},"could":{"ch":"可以(過去式)","pos":"aux."},"might":{"ch":"可能","pos":"aux."},"must":{"ch":"必須","pos":"aux."},
+  "a":{"ch":"一個","pos":"art."},"an":{"ch":"一個","pos":"art."},"the":{"ch":"這；那","pos":"art."},"and":{"ch":"和；與","pos":"conj."},"but":{"ch":"但是","pos":"conj."},"or":{"ch":"或","pos":"conj."},"so":{"ch":"所以","pos":"conj."},"because":{"ch":"因為","pos":"conj."},"if":{"ch":"如果","pos":"conj."},"while":{"ch":"當…的時候","pos":"conj."},
+  "in":{"ch":"在…裡面","pos":"prep."},"on":{"ch":"在…上面","pos":"prep."},"at":{"ch":"在…","pos":"prep."},"to":{"ch":"到；向","pos":"prep."},"for":{"ch":"為了；給","pos":"prep."},"of":{"ch":"…的","pos":"prep."},"with":{"ch":"和…一起；用","pos":"prep."},"by":{"ch":"藉由；被","pos":"prep."},"from":{"ch":"來自；從…","pos":"prep."},"about":{"ch":"關於","pos":"prep."},"into":{"ch":"進入","pos":"prep."},"through":{"ch":"穿過；透過","pos":"prep."},"over":{"ch":"在…上方","pos":"prep."},"under":{"ch":"在…下方","pos":"prep."},"between":{"ch":"在…之間","pos":"prep."},"without":{"ch":"沒有","pos":"prep."},"out":{"ch":"出；向外","pos":"prep."},"up":{"ch":"向上","pos":"adv."},"down":{"ch":"向下","pos":"adv."},"off":{"ch":"離開；關閉","pos":"adv."},
+  "what":{"ch":"什麼","pos":"疑問詞"},"where":{"ch":"哪裡","pos":"疑問詞"},"when":{"ch":"何時","pos":"疑問詞"},"why":{"ch":"為什麼","pos":"疑問詞"},"who":{"ch":"誰","pos":"疑問詞"},"how":{"ch":"如何","pos":"疑問詞"},"which":{"ch":"哪一個","pos":"疑問詞"},
+  "very":{"ch":"非常","pos":"adv."},"too":{"ch":"太；也","pos":"adv."},"also":{"ch":"也","pos":"adv."},"just":{"ch":"只是；剛好","pos":"adv."},"only":{"ch":"只有","pos":"adv."},"even":{"ch":"甚至","pos":"adv."},"now":{"ch":"現在","pos":"adv."},"then":{"ch":"然後；那時","pos":"adv."},"here":{"ch":"這裡","pos":"adv."},"there":{"ch":"那裡；有","pos":"adv."},"not":{"ch":"不","pos":"adv."},"more":{"ch":"更多的","pos":"adj."},"most":{"ch":"最多的","pos":"adj."},"much":{"ch":"很多","pos":"adj."},"many":{"ch":"許多","pos":"adj."},"all":{"ch":"所有","pos":"adj."},"some":{"ch":"一些","pos":"adj."},"any":{"ch":"任何","pos":"adj."},"other":{"ch":"其他的","pos":"adj."},"first":{"ch":"第一；首先","pos":"adj."},"still":{"ch":"仍然","pos":"adv."},"always":{"ch":"總是","pos":"adv."},"never":{"ch":"從不","pos":"adv."},"sometimes":{"ch":"有時候","pos":"adv."},"usually":{"ch":"通常","pos":"adv."},
+  "amazing":{"ch":"令人驚奇的","pos":"adj."},"ancestors":{"ch":"祖先","pos":"n."},"architecture":{"ch":"建築","pos":"n."},"aroma":{"ch":"香氣","pos":"n."},"art":{"ch":"藝術","pos":"n."},"ask":{"ch":"詢問；要求","pos":"v."},"away":{"ch":"遠離","pos":"adv."},"baroque":{"ch":"巴洛克","pos":"adj."},"beam":{"ch":"樑木","pos":"n."},"beams":{"ch":"樑木(複數)","pos":"n."},"bean":{"ch":"豆子","pos":"n."},"big":{"ch":"大的","pos":"adj."},"birthday":{"ch":"生日","pos":"n."},"black":{"ch":"黑色的","pos":"adj."},"blackened":{"ch":"變黑的","pos":"adj."},"block":{"ch":"阻擋；街區","pos":"v./n."},"blocks":{"ch":"塊狀物","pos":"n."},"boil":{"ch":"煮沸","pos":"v."},"bow":{"ch":"鞠躬","pos":"v."},"break":{"ch":"打破","pos":"v."},"breath":{"ch":"呼吸","pos":"n."},"breeze":{"ch":"微風","pos":"n."},"bricks":{"ch":"磚塊","pos":"n."},"brings":{"ch":"帶來","pos":"v."},"broken":{"ch":"破掉的","pos":"adj."},"brought":{"ch":"帶來(過去式)","pos":"v."},"brush":{"ch":"毛筆；刷子","pos":"n."},"build":{"ch":"建造","pos":"v."},"buildings":{"ch":"建築物","pos":"n."},"built":{"ch":"建造(過去式)","pos":"v."},"burn":{"ch":"燃燒","pos":"v."},"business":{"ch":"商業；生意","pos":"n."},"busy":{"ch":"忙碌的；熱鬧的","pos":"adj."},"buy":{"ch":"買","pos":"v."},
+  "calm":{"ch":"平靜的","pos":"adj."},"calligrapher":{"ch":"書法家","pos":"n."},"cartoons":{"ch":"卡通","pos":"n."},"ceiling":{"ch":"天花板","pos":"n."},"celebration":{"ch":"慶祝","pos":"n."},"centuries":{"ch":"世紀","pos":"n."},"chance":{"ch":"機會","pos":"n."},"character":{"ch":"角色","pos":"n."},"chewy":{"ch":"有嚼勁的","pos":"adj."},"city":{"ch":"城市","pos":"n."},"clans":{"ch":"宗族；家族","pos":"n."},"classic":{"ch":"經典的","pos":"adj."},"clean":{"ch":"乾淨的","pos":"adj."},"coffee":{"ch":"咖啡","pos":"n."},"color":{"ch":"顏色","pos":"n."},"combination":{"ch":"組合","pos":"n."},"come":{"ch":"來","pos":"v."},"confuse":{"ch":"混淆","pos":"v."},"connected":{"ch":"連接的","pos":"adj."},"control":{"ch":"控制","pos":"n./v."},"country":{"ch":"國家","pos":"n."},"court":{"ch":"宮廷；法庭","pos":"n."},"courtyard":{"ch":"庭院","pos":"n."},"covered":{"ch":"覆蓋的","pos":"adj."},"crispy":{"ch":"酥脆的","pos":"adj."},"crowded":{"ch":"擁擠的","pos":"adj."},"culture":{"ch":"文化","pos":"n."},"cup":{"ch":"杯子","pos":"n."},"curved":{"ch":"彎曲的","pos":"adj."},"cypress":{"ch":"柏樹；檜木","pos":"n."},
+  "danger":{"ch":"危險","pos":"n."},"dangerous":{"ch":"危險的","pos":"adj."},"day":{"ch":"天；日子","pos":"n."},"deep":{"ch":"深的","pos":"adj."},"defend":{"ch":"防禦","pos":"v."},"defensive":{"ch":"防禦的","pos":"adj."},"deliberately":{"ch":"故意地","pos":"adv."},"delicate":{"ch":"精緻的","pos":"adj."},"descendants":{"ch":"後代","pos":"n."},"describe":{"ch":"描述","pos":"v."},"designed":{"ch":"設計","pos":"v."},"different":{"ch":"不同的","pos":"adj."},"digestion":{"ch":"消化","pos":"n."},"directly":{"ch":"直接地","pos":"adv."},"dirt":{"ch":"泥土","pos":"n."},"door":{"ch":"門","pos":"n."},"dragon":{"ch":"龍","pos":"n."},"drama":{"ch":"戲劇","pos":"n."},"draw":{"ch":"汲取；畫","pos":"v."},"drink":{"ch":"飲料；喝","pos":"n./v."},"drop":{"ch":"掉落；丟下","pos":"v."},"dry":{"ch":"乾的","pos":"adj."},"dust":{"ch":"灰塵","pos":"n."},"dynasty":{"ch":"朝代","pos":"n."},
+  "easily":{"ch":"容易地","pos":"adv."},"emperor":{"ch":"皇帝","pos":"n."},"enemies":{"ch":"敵人","pos":"n."},"energy":{"ch":"能量","pos":"n."},"enjoy":{"ch":"享受","pos":"v."},"enter":{"ch":"進入","pos":"v."},"era":{"ch":"時代","pos":"n."},"evil":{"ch":"邪惡的","pos":"adj."},"exam":{"ch":"考試","pos":"n."},"expensive":{"ch":"昂貴的","pos":"adj."},
+  "family":{"ch":"家庭","pos":"n."},"famous":{"ch":"著名的","pos":"adj."},"far":{"ch":"遠的","pos":"adv."},"fast":{"ch":"快速的","pos":"adj."},"fishermen":{"ch":"漁民","pos":"n."},"flat":{"ch":"平坦的","pos":"adj."},"flavor":{"ch":"口味","pos":"n."},"floral":{"ch":"花香的","pos":"adj."},"flour":{"ch":"麵粉","pos":"n."},"flowers":{"ch":"花","pos":"n."},"food":{"ch":"食物","pos":"n."},"fortune":{"ch":"運氣；籤","pos":"n."},"founded":{"ch":"創立","pos":"v."},"fragile":{"ch":"易碎的","pos":"adj."},"free":{"ch":"免費的","pos":"adj."},"front":{"ch":"前面","pos":"n."},"fry":{"ch":"炒；炸","pos":"v."},"fun":{"ch":"樂趣","pos":"n."},"fusion":{"ch":"融合","pos":"n."},
+  "game":{"ch":"遊戲","pos":"n."},"games":{"ch":"遊戲(複數)","pos":"n."},"gate":{"ch":"門","pos":"n."},"generosity":{"ch":"慷慨","pos":"n."},"gifts":{"ch":"禮物；恩賜","pos":"n."},"god":{"ch":"神","pos":"n."},"goddess":{"ch":"女神","pos":"n."},"gods":{"ch":"神明","pos":"n."},"good":{"ch":"好的","pos":"adj."},"government":{"ch":"政府","pos":"n."},"grilled":{"ch":"烤的","pos":"adj."},"ground":{"ch":"地面","pos":"n."},"gunpowder":{"ch":"火藥","pos":"n."},
+  "half":{"ch":"一半","pos":"n."},"halls":{"ch":"大廳","pos":"n."},"handmade":{"ch":"手工的","pos":"adj."},"handwriting":{"ch":"筆跡","pos":"n."},"hard":{"ch":"用力地；困難的","pos":"adv."},"hawthorn":{"ch":"山楂","pos":"n."},"health":{"ch":"健康","pos":"n."},"heart":{"ch":"中心；心臟","pos":"n."},"heat":{"ch":"熱度","pos":"n."},"herbal":{"ch":"草本的","pos":"adj."},"high":{"ch":"高的","pos":"adj."},"history":{"ch":"歷史","pos":"n."},"holes":{"ch":"洞","pos":"n."},"holy":{"ch":"神聖的","pos":"adj."},"home":{"ch":"家","pos":"n."},"hometown":{"ch":"家鄉","pos":"n."},"horse":{"ch":"馬","pos":"n."},"house":{"ch":"房子","pos":"n."},
+  "imagine":{"ch":"想像","pos":"v."},"immense":{"ch":"極大的","pos":"adj."},"imperial":{"ch":"帝國的；科舉的","pos":"adj."},"incense":{"ch":"香","pos":"n."},"ink":{"ch":"墨水","pos":"n."},"inside":{"ch":"裡面","pos":"prep."},"instead":{"ch":"替代；反而","pos":"adv."},
+  "joints":{"ch":"接合處","pos":"n."},"juice":{"ch":"果汁","pos":"n."},"keep":{"ch":"保持；保存","pos":"v."},"kettle":{"ch":"水壺","pos":"n."},"kind":{"ch":"種類","pos":"n."},"kindness":{"ch":"仁慈","pos":"n."},"know":{"ch":"知道","pos":"v."},
+  "land":{"ch":"土地","pos":"n."},"lane":{"ch":"巷子","pos":"n."},"legend":{"ch":"傳說","pos":"n."},"life":{"ch":"生命","pos":"n."},"like":{"ch":"像；喜歡","pos":"prep./v."},"lines":{"ch":"線","pos":"n."},"locals":{"ch":"當地人","pos":"n."},"long":{"ch":"長的","pos":"adj."},"look":{"ch":"看","pos":"v."},"lost":{"ch":"迷路","pos":"v./adj."},"loud":{"ch":"大聲的","pos":"adj."},"love":{"ch":"喜愛","pos":"v."},"luck":{"ch":"運氣","pos":"n."},
+  "magic":{"ch":"魔法","pos":"n."},"magnificent":{"ch":"宏偉的","pos":"adj."},"make":{"ch":"製造；讓","pos":"v."},"mansion":{"ch":"別墅；大宅","pos":"n."},"market":{"ch":"市場","pos":"n."},"master":{"ch":"大師","pos":"n."},"mazu":{"ch":"媽祖","pos":"n."},"meaning":{"ch":"意思","pos":"n."},"means":{"ch":"意思是","pos":"v."},"meat":{"ch":"肉","pos":"n."},"medicine":{"ch":"醫學；藥物","pos":"n."},"melt":{"ch":"融化","pos":"v."},"members":{"ch":"成員","pos":"n."},"merchant":{"ch":"商人","pos":"n."},"merchants":{"ch":"商人","pos":"n."},"metal":{"ch":"金屬","pos":"n."},"milk":{"ch":"牛奶","pos":"n."},"modern":{"ch":"現代的","pos":"adj."},"mochi":{"ch":"麻糬","pos":"n."},"moon":{"ch":"月亮","pos":"n."},"mortise":{"ch":"榫眼","pos":"n."},"mountains":{"ch":"山","pos":"n."},"mud":{"ch":"泥巴","pos":"n."},"museum":{"ch":"博物館","pos":"n."},"music":{"ch":"音樂","pos":"n."},
+  "nails":{"ch":"釘子","pos":"n."},"name":{"ch":"名字","pos":"n."},"narrow":{"ch":"狹窄的","pos":"adj."},"nature":{"ch":"自然","pos":"n."},"need":{"ch":"需要","pos":"v."},"neighborhood":{"ch":"鄰近地區","pos":"n."},"neighbors":{"ch":"鄰居","pos":"n."},"nice":{"ch":"美好的","pos":"adj."},"noise":{"ch":"噪音","pos":"n."},"nostalgic":{"ch":"懷舊的","pos":"adj."},"number":{"ch":"號碼","pos":"n."},
+  "official":{"ch":"官方的；官員","pos":"adj./n."},"oil":{"ch":"油","pos":"n."},"old":{"ch":"老的","pos":"adj."},"original":{"ch":"原來的","pos":"adj."},"osmanthus":{"ch":"桂花","pos":"n."},"outside":{"ch":"外面","pos":"prep."},"owner":{"ch":"擁有者；屋主","pos":"n."},
+  "palace":{"ch":"宮殿","pos":"n."},"part":{"ch":"部分","pos":"n."},"patience":{"ch":"耐心","pos":"n."},"peace":{"ch":"平靜","pos":"n."},"peanut":{"ch":"花生","pos":"n."},"people":{"ch":"人們","pos":"n."},"phoenix":{"ch":"鳳凰","pos":"n."},"photo":{"ch":"照片","pos":"n."},"pillars":{"ch":"柱子","pos":"n."},"pirates":{"ch":"海盜","pos":"n."},"place":{"ch":"地方","pos":"n."},"play":{"ch":"玩","pos":"v."},"please":{"ch":"請","pos":"adv."},"plums":{"ch":"梅子","pos":"n."},"poem":{"ch":"詩","pos":"n."},"poet":{"ch":"詩人","pos":"n."},"poor":{"ch":"貧窮的","pos":"adj."},"popular":{"ch":"受歡迎的","pos":"adj."},"porridge":{"ch":"粥","pos":"n."},"powerful":{"ch":"強大的；靈驗的","pos":"adj."},"pray":{"ch":"祈禱","pos":"v."},"prestigious":{"ch":"有名望的","pos":"adj."},"prevent":{"ch":"預防","pos":"v."},"private":{"ch":"私人的","pos":"adj."},"property":{"ch":"財產","pos":"n."},
+  "rare":{"ch":"稀有的","pos":"adj."},"red":{"ch":"紅色的","pos":"adj."},"religious":{"ch":"宗教的","pos":"adj."},"remember":{"ch":"記住","pos":"v."},"represent":{"ch":"代表","pos":"v."},"respect":{"ch":"尊敬","pos":"n."},"respectful":{"ch":"尊重的","pos":"adj."},"restored":{"ch":"修復的","pos":"adj."},"rice":{"ch":"米","pos":"n."},"rich":{"ch":"富有的","pos":"adj."},"right":{"ch":"右邊；正確的","pos":"n./adj."},"round":{"ch":"圓的","pos":"adj."},
+  "safety":{"ch":"安全","pos":"n."},"salt":{"ch":"鹽","pos":"n."},"salty":{"ch":"鹹的","pos":"adj."},"sausage":{"ch":"香腸","pos":"n."},"savory":{"ch":"鹹香的","pos":"adj."},"scholar":{"ch":"學者","pos":"n."},"scroll":{"ch":"卷軸","pos":"n."},"sea":{"ch":"海","pos":"n."},"sesame":{"ch":"芝麻","pos":"n."},"shape":{"ch":"形狀","pos":"n."},"sharing":{"ch":"分享","pos":"v."},"shop":{"ch":"商店","pos":"n."},"show":{"ch":"展示","pos":"v."},"shrimp":{"ch":"蝦","pos":"n."},"side":{"ch":"邊；側","pos":"n."},"similar":{"ch":"相似的","pos":"adj."},"simple":{"ch":"簡單的","pos":"adj."},"skill":{"ch":"技術","pos":"n."},"skills":{"ch":"技巧；技能","pos":"n."},"skin":{"ch":"皮","pos":"n."},"small":{"ch":"小的","pos":"adj."},"smell":{"ch":"氣味；聞","pos":"n./v."},"smoke":{"ch":"煙","pos":"n."},"smoky":{"ch":"有煙燻味的","pos":"adj."},"snack":{"ch":"點心；零食","pos":"n."},"snacks":{"ch":"點心(複數)","pos":"n."},"soft":{"ch":"柔軟的","pos":"adj."},"something":{"ch":"某事；某物","pos":"pron."},"souvenirs":{"ch":"紀念品","pos":"n."},"space":{"ch":"空間","pos":"n."},"special":{"ch":"特別的","pos":"adj."},"spirit":{"ch":"靈魂；精神","pos":"n."},"spirits":{"ch":"神明；靈魂","pos":"n."},"statue":{"ch":"雕像；神像","pos":"n."},"status":{"ch":"地位","pos":"n."},"step":{"ch":"踩；踏","pos":"v."},"stinky":{"ch":"發臭的","pos":"adj."},"stone":{"ch":"石頭","pos":"n."},"straight":{"ch":"直的","pos":"adj."},"street":{"ch":"街道","pos":"n."},"strong":{"ch":"強壯的","pos":"adj."},"style":{"ch":"風格","pos":"n."},"sugar":{"ch":"糖","pos":"n."},"sweet":{"ch":"甜的","pos":"adj."},"sweets":{"ch":"甜食","pos":"n."},"symbol":{"ch":"象徵","pos":"n."},
+  "taiwan":{"ch":"台灣","pos":"n."},"taiwanese":{"ch":"台灣的","pos":"adj."},"take":{"ch":"拿","pos":"v."},"temple":{"ch":"寺廟","pos":"n."},"temples":{"ch":"寺廟(複數)","pos":"n."},"tenon":{"ch":"榫頭","pos":"n."},"texture":{"ch":"口感；質地","pos":"n."},"thick":{"ch":"濃稠的","pos":"adj."},"thieves":{"ch":"小偷","pos":"n."},"thing":{"ch":"事情；東西","pos":"n."},"thirst":{"ch":"口渴","pos":"n."},"throw":{"ch":"丟","pos":"v."},"tiger":{"ch":"老虎","pos":"n."},"time":{"ch":"時間","pos":"n."},"tofu":{"ch":"豆腐","pos":"n."},"tongue":{"ch":"舌頭","pos":"n."},"tops":{"ch":"陀螺","pos":"n."},"toy":{"ch":"玩具","pos":"n."},"toys":{"ch":"玩具(複數)","pos":"n."},"tradition":{"ch":"傳統","pos":"n."},"traditional":{"ch":"傳統的","pos":"adj."},"travel":{"ch":"旅行","pos":"v."},"travelers":{"ch":"旅人","pos":"n."},
+  "unique":{"ch":"獨特的","pos":"adj."},"universe":{"ch":"宇宙","pos":"n."},"use":{"ch":"使用","pos":"v."},"vastness":{"ch":"浩瀚","pos":"n."},"vegan":{"ch":"素食的","pos":"adj."},"vendors":{"ch":"小販","pos":"n."},"vintage":{"ch":"復古的","pos":"adj."},"visitors":{"ch":"訪客","pos":"n."},
+  "walk":{"ch":"走路","pos":"v."},"wall":{"ch":"牆壁","pos":"n."},"walls":{"ch":"牆壁(複數)","pos":"n."},"warm":{"ch":"溫暖的","pos":"adj."},"water":{"ch":"水","pos":"n."},"wealth":{"ch":"財富","pos":"n."},"wealthy":{"ch":"富有的","pos":"adj."},"weather":{"ch":"天氣","pos":"n."},"well":{"ch":"水井","pos":"n."},"western":{"ch":"西方的","pos":"adj."},"whistle":{"ch":"哨音","pos":"n."},"white":{"ch":"白色的","pos":"adj."},"whole":{"ch":"整個的","pos":"adj."},"wind":{"ch":"風","pos":"n."},"windy":{"ch":"多風的","pos":"adj."},"wood":{"ch":"木頭","pos":"n."},"wooden":{"ch":"木製的","pos":"adj."},"world":{"ch":"世界","pos":"n."},"worship":{"ch":"祭拜","pos":"n."},"writing":{"ch":"書寫","pos":"n."},
+  "years":{"ch":"年","pos":"n."},"guess":{"ch":"猜猜看","pos":"v."},"exchange":{"ch":"兌換","pos":"v."},"refreshing":{"ch":"清涼解渴的","pos":"adj."},"souvenir":{"ch":"紀念品","pos":"n."},"fan":{"ch":"扇子","pos":"n."},"fans":{"ch":"扇子(複數)","pos":"n."},"blessings":{"ch":"祝福","pos":"n."},"lever":{"ch":"拉桿","pos":"n."},"surprise":{"ch":"驚喜","pos":"n."},"helicopter":{"ch":"直升機","pos":"n."},"bamboo":{"ch":"竹子","pos":"n."},"landmark":{"ch":"地標","pos":"n."},"sunrise":{"ch":"日出","pos":"n."},"lanterns":{"ch":"燈籠","pos":"n."},"wishes":{"ch":"願望","pos":"n."},"crab":{"ch":"螃蟹","pos":"n."},"crabs":{"ch":"螃蟹(複數)","pos":"n."},"believers":{"ch":"信徒","pos":"n."},"focus":{"ch":"專注力","pos":"n."},"sticky":{"ch":"黏黏的","pos":"adj."},"vertical":{"ch":"垂直的","pos":"adj."},"powder":{"ch":"粉末","pos":"n."},"rebels":{"ch":"叛亂","pos":"n."},"jealousy":{"ch":"猜忌","pos":"n."},"pilgrimage":{"ch":"進香","pos":"n."},"magnets":{"ch":"磁鐵","pos":"n."},"keychains":{"ch":"鑰匙圈","pos":"n."},
+  "tap":{"ch":"感應；輕拍","pos":"v."},"card":{"ch":"卡片","pos":"n."},"bus":{"ch":"公車","pos":"n."},"station":{"ch":"車站","pos":"n."},"train":{"ch":"火車","pos":"n."},"system":{"ch":"系統","pos":"n."},"convenient":{"ch":"方便的","pos":"adj."},"pay":{"ch":"付費","pos":"v."},"scooter":{"ch":"機車","pos":"n."},"scooters":{"ch":"機車(複數)","pos":"n."},"speed":{"ch":"速度","pos":"n."},"rail":{"ch":"鐵路","pos":"n."},"minutes":{"ch":"分鐘","pos":"n."},"traffic":{"ch":"交通","pos":"n."},"common":{"ch":"常見的","pos":"adj."},"way":{"ch":"方式；路","pos":"n."},
+  "bubble":{"ch":"泡泡；珍珠","pos":"n."},"tea":{"ch":"茶","pos":"n."},"hiking":{"ch":"健行","pos":"n."},"photos":{"ch":"照片(複數)","pos":"n."},"social":{"ch":"社交的","pos":"adj."},"media":{"ch":"媒體","pos":"n."},"apps":{"ch":"應用程式","pos":"n."},"weekend":{"ch":"週末","pos":"n."},"weekends":{"ch":"週末(複數)","pos":"n."},"destination":{"ch":"目的地","pos":"n."},"spicy":{"ch":"辣的","pos":"adj."},
+  "muslim":{"ch":"穆斯林","pos":"n."},"pork":{"ch":"豬肉","pos":"n."},"halal":{"ch":"清真的","pos":"adj."},"islamic":{"ch":"伊斯蘭的","pos":"adj."},"rules":{"ch":"規則","pos":"n."},"alcohol":{"ch":"酒精","pos":"n."},"religion":{"ch":"宗教","pos":"n."},"hindu":{"ch":"印度教徒","pos":"n."},"beef":{"ch":"牛肉","pos":"n."},"sacred":{"ch":"神聖的","pos":"adj."},"vegetarian":{"ch":"素食者","pos":"n."},"lentils":{"ch":"扁豆","pos":"n."},"garlic":{"ch":"大蒜","pos":"n."},"onion":{"ch":"洋蔥","pos":"n."},"bread":{"ch":"麵包","pos":"n."},"beer":{"ch":"啤酒","pos":"n."},"strict":{"ch":"嚴格的","pos":"adj."},"environmental":{"ch":"環保的","pos":"adj."},"reasons":{"ch":"原因","pos":"n."},"dishes":{"ch":"菜餚","pos":"n."},"kimchi":{"ch":"泡菜","pos":"n."},"language":{"ch":"語言","pos":"n."},"teach":{"ch":"教","pos":"v."}
+};
+
+// ══════════════════════════════════════════════════════════
+//  GENERAL CONVERSATION QUESTIONS
+// ══════════════════════════════════════════════════════════
+const generalQs = [
+  { en:"What is the most surprising thing you've seen in Taiwan so far?", ch:"到目前為止，你在台灣看到最讓你驚訝的事情是什麼？" },
+  { en:"Have you tried stinky tofu? How would you describe the smell?", ch:"你吃過臭豆腐嗎？你會怎麼形容那個味道？" },
+  { en:"What kind of street food is popular in your country?", ch:"你們國家流行什麼樣的街頭小吃？" },
+  { en:"Do you have temples or similar religious buildings in your hometown?", ch:"你的家鄉有寺廟或是類似的宗教建築嗎？" },
+  { en:"How do university students in your country spend their weekends?", ch:"你們國家的大學生週末都做些什麼？" },
+  { en:"What is your favorite part of Taiwanese culture?", ch:"你最喜歡台灣文化的哪一部分？" }
+];
+
+// ══════════════════════════════════════════════════════════
+//  ASSIGNMENT TABLE  (from 0316 工作分配.pdf)
+// ══════════════════════════════════════════════════════════
+// Keys: chat / history / exp / quiz / food
+const ASSIGNMENTS = {
+  1:  { chat:[2],      history:[2],      exp:[6],                       food:[28]     },
+  2:  { chat:[10],     history:[17],     exp:[28]                                     },
+  3:  { chat:[11],     history:[11],                                    food:[14]     },
+  4:  { chat:[33],     history:[36]                                                   },
+  5:  { chat:[15],     history:[12]                                                   },
+  6:  { chat:[15],     history:[12],                     quiz:[31]                    },
+  7:  { chat:[20],     history:[22],     exp:[5,13]                                   },
+  8:  { chat:[20],     history:[26],                                    food:[30]     },
+  9:  { chat:[19],     history:[9],      exp:[19]                                     },
+  10: { chat:[27],     history:[29],     exp:[7,16,33,36],              food:[6,28]   },
+  11: { chat:[23],     history:[14],                     quiz:[11]                    },
+  12: { chat:[34],     history:[32]                                                   },
+  13: {                history:[32],     exp:[9,19],     quiz:[34]                    },
+  14: { chat:[5],      history:[13],                                    food:[5,13]   }
+};
+
+// ══════════════════════════════════════════════════════════
+//  SUPPORT STAFF DATA (後勤人員工作分配)
+//  每筆格式：{ seat, role, spotId, spotName, duties:[] }
+// ══════════════════════════════════════════════════════════
+const SUPPORT_STAFF = [
+  // ── 站點 1：天后宮 ── 買蝦猴、紅心芭樂
+  { seat: 1,  role: "採購",  spotId: 1,  spotName: "天后宮",   duties: ["負責購買蝦猴、紅心芭樂", "在導覽前備妥食材讓來賓試吃"] },
+  { seat: 18, role: "採購",  spotId: 1,  spotName: "天后宮",   duties: ["負責購買蝦猴、紅心芭樂", "在導覽前備妥食材讓來賓試吃"] },
+  { seat: 24, role: "採購",  spotId: 1,  spotName: "天后宮",   duties: ["負責購買蝦猴、紅心芭樂", "在導覽前備妥食材讓來賓試吃"] },
+  // ── 站點 8：桂花酸梅湯 ── 買酸梅湯
+  { seat: 3,  role: "採購",  spotId: 8,  spotName: "桂花酸梅湯", duties: ["負責購買酸梅湯", "備妥讓來賓品嚐"] },
+  { seat: 8,  role: "採購",  spotId: 8,  spotName: "桂花酸梅湯", duties: ["負責購買酸梅湯", "備妥讓來賓品嚐"] },
+  // ── 站點 10：鶴棲別墅 ── 買麻糬
+  { seat: 21, role: "採購",  spotId: 10, spotName: "鶴棲別墅",  duties: ["負責購買麻糬", "備妥讓來賓品嚐"] },
+  { seat: 25, role: "採購",  spotId: 10, spotName: "鶴棲別墅",  duties: ["負責購買麻糬", "備妥讓來賓品嚐"] },
+  // ── 站點 13：丁家大宅 ── 保管紀念品
+  { seat: 4,  role: "紀念品保管", spotId: 13, spotName: "丁家大宅", duties: ["負責保管全場紀念品", "統一保管，活動結束後發放"] },
+];
+
+// ══════════════════════════════════════════════════════════
+//  SPOT CONTENT  (combined from experience.html + chat history.html)
+// ══════════════════════════════════════════════════════════
+// Each paragraph that starts with "💡" is a Chinese cultural note (collapsible)
+// Paragraphs with [english|chinese] have interactive highlighted words
+
+const SPOT_CONTENT = {
+  1: {
+    name:"天后宮", enName:"Lukang Mazu Temple",
+    chat:{
+      topic:"Religion & Snacks",
+      en:"Do you know Mazu? She is the goddess of the sea. Many people come here to pray for safety. Also, have you tried 'Shrimp Monkeys'? It is a special snack here.",
+      zh:"你知道媽祖嗎？她是海上的女神。很多人來這裡祈求平安。另外，你吃過「蝦猴」嗎？這是這裡的特產點心。"
+    },
+    history:{
+      subtitle:"Mazu Temple — Full Guide Script",
+      paras:[
+        "This is the heart of Lukang. Mazu Temple is over 400 years old. The statue was brought directly from Meizhou, China, which makes it very powerful. Look at the ceiling and the pillars; they are blackened by incense smoke. This shows how many people come here to pray every day. Mazu protects fishermen and travelers.",
+        "The main Mazu [statue|神尊] cannot move. We only take the branch statues out. Her green guardian can [see far away|看清遠方], and the red one [holds his breath|閉氣] to listen.",
+        "💡 神尊移動禁忌與左右護法：正中間最珍貴的「鎮殿媽祖」神像絕對不可移動，若信徒辦活動或村莊遶境，只能請旁邊的「分靈」神像出巡，以免主神像借出後遭人佔為己有。媽祖的左右護法中，「千里眼」是綠色的，能看清遠方；「順風耳」是紅色的，且需「閉氣」以專心聆聽極遠處信徒的心聲。",
+        "During a [pilgrimage|進香], the [incense ashes|香火] carry the god's [spiritual power|靈力]. We use a black umbrella to protect them.",
+        "💡 進香儀式與靈力保護：進香時最重要的是從主廟取回的「香火」，這代表神明的「靈力」，甚至比神像本身更重要。為了防止靈力被他人奪走或干擾，運送香火的器具必須用黑傘遮蔽，並由神將與旗幟嚴密包圍保護。",
+        "Enter from the [Dragon side|龍邊] and exit from the [Tiger side|虎邊]. Look at the beautiful wooden [ceiling|藻井]. It uses no iron nails to show [wealth|財力]!",
+        "💡 參拜動線與建築工藝：進廟必須從神明視角的左邊（龍邊）進、右邊（虎邊）出，形成單行道，若從虎邊進去象徵「入虎口會被吃掉」。廟宇天花板的「藻井」為複雜的八角形幾何構造，完全以木頭卡榫相接（如積木般不用一根鐵釘），這類毫無實際承重功能的華麗構造，純粹是為了展現廟宇雄厚的財力。"
+      ]
+    },
+    exp:{
+      subtitle:"月老求紅線 (Matchmaker God Activity)",
+      paras:[
+        "This is the Matchmaker God. He helps people find [love|愛情].",
+        "Tell him your name and birthday in your [heart|心裡]. Then, ask him for a [red thread|紅線].",
+        "Now, drop these two red blocks. If one is flat and one is round, it means 'Yes!'",
+        "You can take a red thread and tie it on your [wrist|手腕]. When the thread breaks, your true love is coming!"
+      ]
+    },
+    quiz:{
+      subtitle:"蝦猴挑戰 (Bravery Food Challenge!)",
+      paras:[
+        "Look! These are [Shrimp Monkeys|蝦猴] and Red Guava. They are very famous in Lukang.",
+        "They are actually [mud shrimp|泥蝦] from the sea. We [deep-fry|油炸] them until they are very [crispy|酥脆的] and salty.",
+        "Don't worry! It's a bravery [challenge|挑戰]. Do you want to try one?",
+        "In your country, do you have any [famous or scary|著名或可怕的] food challenges?"
+      ]
+    },
+    food:{
+      subtitle:"蝦猴與紅心芭樂 (Local Snacks)",
+      paras:[
+        "Look! These are [Shrimp Monkeys|蝦猴] and Red Guava. They are very famous in Lukang.",
+        "They are actually [mud shrimp|泥蝦] from the sea. We [deep-fry|油炸] them until they are very [crispy|酥脆的] and salty.",
+        "Don't worry! It's a bravery [challenge|挑戰]. Do you want to try one?",
+        "In your country, do you have any [famous or scary|著名或可怕的] food challenges?"
+      ]
+    }
+  },
+
+  2: {
+    name:"新祖宮", enName:"Xinzu Temple",
+    chat:{
+      topic:"Government & History",
+      en:"This temple is special because it was built by the government long ago. It feels more official than other temples.",
+      zh:"這座廟很特別，因為它是很久以前由政府建造的。它感覺比其他廟宇更官方一點。"
+    },
+    history:{
+      subtitle:"Xinzu Temple — Full Guide Script",
+      paras:[
+        "Xinzu Temple is unique. It is the only Mazu temple in Taiwan built by the Emperor's order. Because it is an 'Official Temple', the Mazu here wears official court clothes, not simple clothes. Outside, there is a stone tablet 'Dismounting Marker'. It says everyone, even high officials, must get off their horses to show respect.",
+        "A general defeated the [rebels|叛亂]. To avoid the Emperor's [jealousy|猜忌], he said Mazu helped him.",
+        "💡 天子御賜的政治意義：清朝將領福康安為了平定「林爽文事件」，帶領軍隊從鹿港登陸。平定叛亂後，為了避免「功高震主」惹皇帝猜忌，他將功勞全數歸給媽祖保佑，並請乾隆皇帝下旨興建這座媽祖廟。",
+        "This temple showed the [power|權力] of the Qing Empire. All [government officials|政府官員] had to [worship|祭拜] here first.",
+        "💡 文武百官的必拜之處：這座廟的興建同時具有「插旗」的政治意味，象徵大清帝國的勢力已全面控制此地。身為皇帝下旨興建的「官廟」，清朝官員只要乘船抵達鹿港，第一件事就必須先來此廟祭拜，將其視同皇帝親臨般尊敬。"
+      ]
+    },
+    exp:{
+      subtitle:"帶領求籤詩活動",
+      paras:[
+        "Let's ask the god a [question|問題]. You can ask about school, work, or love.",
+        "Tell the god your name and your question in your heart.",
+        "Shake this box and pick one [stick|籤]. Look at the [number|號碼].",
+        "Drop the red blocks. If it means 'Yes', this is your number. If 'No', please pick another stick.",
+        "Now, let's find the paper with your number. It is your [answer|答案]!"
+      ]
+    }
+  },
+
+  3: {
+    name:"彥仲麵茶", enName:"Yanzhong Flour Tea",
+    chat:{
+      topic:"Food Texture",
+      en:"Have you ever eaten something that is like a drink but also like a soup? Flour tea is very thick and smells like sesame and nuts.",
+      zh:"你吃過像飲料又像湯的東西嗎？麵茶很濃稠，聞起來像芝麻或堅果。"
+    },
+    history:{
+      subtitle:"Flour Tea — Guide Script",
+      paras:[
+        "Flour tea is a traditional Taiwanese fast food from the past. We fry flour with sugar, sesame, and oil until it smells amazing. In the old days, vendors would boil water in a kettle with a whistle. When people heard the 'Beeeee' sound, they knew the Flour Tea man was coming. Today we can drink it hot or as a cold slushie."
+      ]
+    },
+    food:{
+      subtitle:"麵茶介紹 (Flour Tea Introduction)",
+      paras:[
+        "Here we are! This shop is very famous for Mian-cha. In English, we call it [Flour Tea|麵茶].",
+        "It is a [traditional|傳統的] snack. It is made of [flour|麵粉], [sugar|糖], and [oil|油].",
+        "We fry the flour first, then mix it with hot water. It is very [thick|濃稠的] and tasty! Please try some!",
+        "By the way, what about your country? What is a [famous or classic snack|著名或經典的小吃] there?"
+      ]
+    }
+  },
+
+  4: {
+    name:"欣嘉木藝行", enName:"Xinjia Woodcraft",
+    chat:{
+      topic:"Toys & Childhood",
+      en:"What toys did you play with as a kid? In Taiwan, before video games, we played with wooden toys.",
+      zh:"你小時候玩什麼玩具？在台灣，在有電動遊戲之前，我們玩木製玩具。"
+    },
+    history:{
+      subtitle:"Woodcraft — Full Guide Script",
+      paras:[
+        "Lukang is famous for woodcraft because many masters came here to build temples. This shop shows traditional skills. Look at the joints; they don't use nails. This technique is called 'Mortise and Tenon'. They make furniture, religious statues, and also fun toys like spinning tops. Smell the wood; it is often Cypress (Hinoki).",
+        "This is the home of a [National Treasure|人間國寶] wood carving master. His ancestors came to carve the [temples|廟宇].",
+        "💡 人間國寶的木雕世家：松林居是一位獲得「人間國寶」殊榮的木雕大師的住家與工作室。其祖先當年從泉州渡海來台，就是為了參與天后宮與龍山寺的木雕工程，後來家族便定居鹿港，後代至今仍持續從事傳統木雕與古蹟修復的工作。",
+        "Lukang people always [handwrite|手寫] their [Spring Couplets|春聯]. If you use [printed|印刷的] ones, people think you have no friends!",
+        "💡 鹿港獨特的書法自尊：鹿港文風鼎盛，幾乎家家戶戶都會「手寫」春聯。如果在鹿港貼「印刷」的春聯，會被認為是「沒有朋友」，因為一般人都有會寫書法的親朋好友可以贈送。松林居門口的春聯不僅是親手揮毫，更是一副「冠首聯（藏頭詩）」，上下聯的第一個字合起來剛好就是「松林」二字。"
+      ]
+    },
+    exp:{
+      subtitle:"木藝體驗 (Woodcraft Experience)",
+      paras:[
+        "This is the home of a [National Treasure|人間國寶] wood carving master. His ancestors came to carve the [temples|廟宇].",
+        "Look at these [wooden|木製的] toys and furniture. They use no [nails|釘子]! The pieces [lock|卡住] together like a puzzle.",
+        "This technique is called [Mortise and Tenon|榫卯]. It is over 1,000 years old and still very [strong|強壯的].",
+        "Smell the wood! It is [Cypress (Hinoki)|檜木]. The [aroma|香氣] is very calming and natural."
+      ]
+    }
+  },
+
+  5: {
+    name:"隘門", enName:"Aimen (Narrow Gate)",
+    chat:{
+      topic:"Safety & Boundaries",
+      en:"Do you feel safe walking here? In the old days, safety was very important because of thieves and clan fights.",
+      zh:"你在這裡走路覺得安全嗎？在舊時代，因為有小偷和械鬥，安全非常重要。"
+    },
+    history:{
+      subtitle:"Narrow Gate — Full Guide Script",
+      paras:[
+        "This is a defensive gate from the Qing Dynasty. Back then, people from different clans often fought each other. This gate was like a border control. If you were chased by enemies but ran inside this gate, you were safe. The writing 'Men Ying Shan Hai' means this gate welcomes everyone from the mountains and seas—peacefully.",
+        "This is a [boundary gate|邊界門]. People closed it at night. If you lose a fight and run inside your gate, you are [safe|安全的].",
+        "💡 社區防禦與江湖規矩：早期鹿港分為許多不同的角頭（社區），為了防禦外人，設立了多達60幾座的隘門。到了晚上，隘門會用粗大木棍從內部栓起關閉，禁止外人進入。此外，這也是早期械鬥時的「江湖潛規則」界線：只要打輸的一方逃進自己的隘門內，就代表認輸，對方絕不能再越界追殺進去。如今多數隘門已被拆除，目前僅存這一座。"
+      ]
+    }
+  },
+
+  6: {
+    name:"半邊井", enName:"Half-Sided Well",
+    chat:{
+      topic:"Kindness & Sharing",
+      en:"Do you share things with your neighbors? This spot has a famous story about sharing water.",
+      zh:"你會和鄰居分享東西嗎？這個景點是一個關於分享水的著名故事。"
+    },
+    history:{
+      subtitle:"Half Well — Full Guide Script",
+      paras:[
+        "Look at this well. It is half inside the wall and half outside. The owner, Mr. Wang, was a rich scholar. In the past, digging a well was very expensive. He deliberately built it this way so that poor neighbors or travelers could draw water for free. It is a symbol of kindness and generosity.",
+        "[Digging a well|鑿井] was very expensive. A rich family put half of their well [outside|外面] to share [free water|免費的水].",
+        "💡 互助分享的傳統美德：早期鑿井費用昂貴，這戶大戶人家在建造水井時，刻意將一半的井身蓋在自家圍牆內供自家使用，另一半露在圍牆外，讓沒有錢鑿井的左鄰右舍或過路客也能免費取水。這就像是早期的「公共飲水機」，展現了濃厚的人情味，後來因取水方便且考量安全問題，井口已被填平。"
+      ]
+    },
+    quiz:{
+      subtitle:"猜猜看 (QA Guessing Activity)",
+      paras:[
+        "Look at this [well|水井]. Only half is inside the wall. The other half is outside. Can you [guess|猜猜看] why?",
+        "You are right! Good guess! It is for [sharing|分享].",
+        "Long ago, water was very [expensive|昂貴的]. Rich people shared their water with [neighbors|鄰居] and travelers."
+      ]
+    }
+  },
+
+  7: {
+    name:"打彈珠", enName:"Marble Pinball Game",
+    chat:{
+      topic:"Games & Luck",
+      en:"Do you like to play games? Are you a lucky person? Let's try a classic Taiwanese night market game!",
+      zh:"你喜歡玩遊戲嗎？你是個幸運的人嗎？我們來試試經典的台灣夜市遊戲！"
+    },
+    history:{
+      subtitle:"Marble Game — Guide Script",
+      paras:[
+        "This is a vintage pinball game found in Taiwanese night markets. It uses marbles instead of metal balls. You use a ruler or stick to push the balls. It is not just about skill; it is about luck! If you get a high score or a special combination, you can win a grilled sausage. It is a very nostalgic game for Taiwanese people."
+      ]
+    },
+    exp:{
+      subtitle:"打彈珠換香腸 (Play Marbles!)",
+      paras:[
+        "Let's play a game! This is [Marble Pinball|打彈珠]. It is a very old and popular game in Taiwan.",
+        "First, put the coins in. Then, [pull this lever|拉拉桿] and hit the marbles into the holes.",
+        "Wow, good job! We can [exchange|兌換] your points for a Taiwanese [Sausage|香腸]. It is grilled and juicy.",
+        "What about your country? What are some [classic games|經典遊戲] people play at festivals or carnivals?"
+      ]
+    }
+  },
+
+  8: {
+    name:"桂花酸梅湯", enName:"Osmanthus Plum Juice",
+    chat:{
+      topic:"Drinks & Thirst",
+      en:"It is a bit hot today, right? What do you drink when you are thirsty? Coke or juice?",
+      zh:"今天有點熱對吧？你口渴時都喝什麼？可樂還是果汁？"
+    },
+    history:{
+      subtitle:"Plum Juice — Guide Script (中醫 TCM Focus)",
+      paras:[
+        "This is not just juice; it is a traditional herbal drink. It is made from smoked plums (Wumei), hawthorn, and topped with osmanthus flowers. In Traditional Chinese Medicine, it helps with digestion and cools down your body heat. It tastes sour, sweet, and smoky.",
+        "In [Traditional Chinese Medicine|中醫], hot weather creates too much [heat|熱] in your body. This drink [cools|冷卻] your body and helps [digestion|消化].",
+        "The [osmanthus|桂花] flowers you see on top are not just pretty — they add a gentle [floral|花香的] aroma and even more health benefits!"
+      ]
+    },
+    food:{
+      subtitle:"酸梅湯口味介紹 (Flavour Introduction)",
+      paras:[
+        "This is Sour Plum Soup. It is a traditional [drink|飲料] in Lukang.",
+        "It tastes [sweet and sour|酸酸甜甜的]. It is very cold and [refreshing|清涼解渴的].",
+        "It helps your [digestion|消化]. It cools your body on a hot day. Please try some!",
+        "What is a popular [summer drink|夏日飲料] in your hometown?"
+      ]
+    }
+  },
+
+  9: {
+    name:"吳肇勳書法", enName:"Wu Zhao-Xun Calligraphy",
+    chat:{
+      topic:"Writing & Art",
+      en:"Is your handwriting good? In Taiwan, writing is an art form. We use a brush and ink.",
+      zh:"你的字寫得好看嗎？在台灣，書寫是一種藝術形式。我們使用毛筆和墨水。"
+    },
+    history:{
+      subtitle:"Calligraphy — Guide Script (+ QA Prep for Seat 9)",
+      paras:[
+        "Mr. Wu is a master calligrapher. Inside, you will see a magnificent long scroll of the 'Red Cliff Ode' (Chi Bi Fu). This is a famous poem by Su Shi from the Song Dynasty. It is about the vastness of the universe and how life is fleeting. The poet realized we should let go of worries and enjoy the present moment — the breeze and the moon. Writing this long piece requires immense patience and mental peace."
+      ]
+    },
+    exp:{
+      subtitle:"書法扇子體驗 (Calligraphy Fan Activity)",
+      paras:[
+        "Welcome to our calligraphy corner! Today, we are going to write on these traditional [fans|扇子].",
+        "We use the Four Treasures of the Study: the [brush|毛筆], the [ink|墨], the [ink stone|硯台], and the paper.",
+        "First, hold the brush [straight and vertical|直直的且垂直]. Use your arm to move the brush.",
+        "Chinese characters carry [blessings|祝福] like Peace. Would you like to try writing? Or we can write a [souvenir|紀念品] for you!"
+      ]
+    }
+  },
+
+  10: {
+    name:"鶴棲別墅", enName:"Heqi Mansion",
+    chat:{
+      topic:"Surprises & Vintage Fun",
+      en:"Do you like surprises? Today we will play a game where you pull a string to win a snack. Also, do you like loud noises?",
+      zh:"你喜歡驚喜嗎？今天我們要玩一個拉繩子贏點心的遊戲。還有，你喜歡很大的聲音嗎？"
+    },
+    history:{
+      subtitle:"Heqi Mansion — Guide Script",
+      paras:[
+        "Heqi Mansion is a special building. Look at the gate; it looks like a Western palace (Baroque style) with an archway. But walk inside, and it is a traditional Fujian courtyard house. It was built by a wealthy merchant, Mr. Wang, during the Japanese era. It shows how cultures mixed in Lukang. Today, it is a place for vintage fun!"
+      ]
+    },
+    exp:{
+      subtitle:"傳統遊戲活動 (Vintage Game Activities)",
+      seatParas:{
+        7: [
+          "(抽抽樂) Try [Lucky Draw|抽抽樂]. [Pull the string|拉繩子] for a [surprise|驚喜] snack! It's very fun."
+        ],
+        16: [
+          "(甩炮) These are [Pop-pop Snappers|甩炮]. Just [throw them on the ground|丟在地上]. Pop! They are loud but [safe|安全的]!"
+        ],
+        33: [
+          "(劍玉) We also have [traditional toys|古玩]. [Kendama|劍玉] has a ball and a string. Catch the ball in the cup. It is good for your [focus|專注力].",
+          "(竹蜻蜓) The [Bamboo Dragonfly|竹蜻蜓] is made of bamboo. [Spin it quickly|快速旋轉] with your hands. It flies high like a [helicopter|直升機]!"
+        ],
+        36: [
+          "(陀螺) The [Top|陀螺] uses a string to [spin very fast|轉得非常快] on the ground. Which toy looks most [interesting|有趣的] to you? In your country, what are some classic games children play?"
+        ]
+      }
+    },
+    food:{
+      subtitle:"麻糬點心 (Mochi Snack Time!)",
+      paras:[
+        "Time for a snack! This is [Mochi|麻糬]. It is made of [rice|米]. It is very [soft and sticky|軟軟黏黏的].",
+        "We put [peanut powder|花生粉] on it. Be careful, it is very sticky!",
+        "Do you have any similar [rice cakes|米糕] in your country? How are they different?"
+      ]
+    }
+  },
+
+  11: {
+    name:"玉渠宮", enName:"Yuqu Temple",
+    chat:{
+      topic:"Cartoons & Drama",
+      en:"Do you like cartoons? What if I told you there is SpongeBob painted in this traditional temple? Let's go find him!",
+      zh:"你喜歡卡通嗎？如果我告訴你這座傳統廟宇裡畫著海綿寶寶呢？我們去找找看！"
+    },
+    history:{
+      subtitle:"Yuqu Temple — Full Guide Script",
+      paras:[
+        "Yuqu Temple is very special. The main god is Marshal Tian Du, the god of drama and music. Because he loves performing arts, when the temple was rebuilt, the artists painted modern cartoon characters like SpongeBob, Mickey Mouse, and Doraemon on the wooden beams. It is a fun mix of strict tradition and modern humor!",
+        "This god is for [music and drama|音樂與戲劇]. When he was a baby, [crabs|毛蟹] and ducks saved him. Believers never eat duck meat!",
+        "💡 戲曲之神的身世傳說：主祀音樂與戲曲之神「田都元帥」（本名雷海青），因生來膚色黝黑如怪胎，嬰兒時被丟棄在田裡。幸虧有毛蟹吐沫、鴨子餵食才得以存活，並與雞、狗一起長大。因此信徒絕對不吃鴨肉與毛蟹，而廟前也以「雞與狗」的雕像取代傳統的石獅子。",
+        "He has a [red face|紅臉] because his face was cut in a war. You can also see his [guardians|神將] here.",
+        "They carved [cartoons|卡通人物] like SpongeBob on the wood to attract [young people|年輕人].",
+        "💡 中西合璧的現代化裝飾：為了拉近與年輕人的距離，廟宇在十幾年前整修時，特別在樑柱上方雕刻了海綿寶寶、派大星、哆啦A夢與米老鼠等現代卡通人物。廟宇左右兩側的交趾陶裝飾也別具巧思，龍邊代表台灣傳統的「南管」音樂，虎邊則代表廟會熱鬧的「北管」音樂。"
+      ]
+    },
+    quiz:{
+      subtitle:"尋找卡通人物 (Find the Cartoons!)",
+      paras:[
+        "Look up at the [roof|屋頂]! This temple is very special.",
+        "Can you find [SpongeBob|海綿寶寶]? Do you see Mickey Mouse or Doraemon?",
+        "They [hide|隱藏] them here to make [young people|年輕人] like the temple more.",
+        "Why do you think the god of drama would like cartoons? What do you think?"
+      ]
+    }
+  },
+
+  12: {
+    name:"九曲巷", enName:"Nine Turns Lane",
+    chat:{
+      topic:"Wind & Architecture",
+      en:"Is it windy today? In Lukang, the wind can be very strong in winter. The lanes here have a clever design to block the wind.",
+      zh:"今天風大嗎？在鹿港，冬天的風可能會非常強。這裡的巷子有一個聰明的設計來擋風。"
+    },
+    history:{
+      subtitle:"Nine Turns Lane + Back Alley + Shiyilou — Full Script",
+      paras:[
+        "This lane is curvy like a snake. It was designed this way on purpose. In winter, Lukang has very strong winds called the 'September Wind'. The curved walls break the wind, so inside the lane, it is calm and warm. It also helped confuse pirates or thieves in the past, giving locals a chance to defend themselves.",
+        "This [crooked|彎曲的] alley has two functions. It blocks strong winter [winds|風] and confuses [robbers|盜匪] like a [maze|迷宮].",
+        "💡 彎曲巷道的雙重功能：巷道刻意做成彎彎曲曲的迷宮狀，第一是為了「防風」，能有效擋住海邊灌進來的強烈東北季風；第二是為了「防禦」，讓入侵的盜匪容易迷失方向，也方便在地居民利用死角埋伏突擊。",
+        "In the past, houses here were built with expensive [red bricks|紅磚]. The Japanese called it the [Red Brick City|紅磚之城].",
+        "💡 日治時期的「紅磚之城」：早年鹿港是非常富裕的商業重鎮，不像窮人住茅草屋或一般人住木屋，鹿港大街上連綿兩公里的房屋全是用昂貴的紅磚建造，甚至建有遮蔽天空的「不見天街」。當日本人來到台灣時為之驚豔，將鹿港譽為「紅磚之城」。",
+        "— 意和行後巷 (廁所遺址) —",
+        "Before flush [toilets|馬桶], farmers collected human [waste|排泄物] here. They even traded expensive [sticky rice|糯米] for rich people's waste!",
+        "💡 水肥交易的黃金時代：在沒有沖水馬桶的年代，房屋後巷留有一個凹槽用來安放木板與木桶，作為收集排泄物的糞坑。當時鄉下農夫會特地來鹿港市區收集這些「水肥」回去當天然肥料。因為鹿港有錢人吃得特別好，大便的營養價值高，農夫甚至會在過年過節時，拿珍貴的「糯米」來跟有錢人家交換水肥。",
+        "— 十宜樓 —",
+        "Rich merchants built a [bridge|天橋] between two buildings. They made a VIP [sky garden|空中花園] on the second floor.",
+        "💡 有錢就是任性的空中招待所：早年大商行不僅擁有前面大街的店面，連後方巷子的房屋也買下。為了方便在兩棟樓之間穿梭而不用下樓，主人建了一座天橋相連，並在二樓打造了一個專屬VIP貴賓的「空中花園」與招待所。",
+        "They used this place to entertain [scholars|文人] with ten [elegant activities|風雅活動], like playing chess and drinking tea.",
+        "💡 「十宜」的風雅意涵：這個空間專門用來招待文人雅士，適合在上面從事十種風雅的休閒娛樂活動：琴、棋、詩、畫、花、月、博、煙、茶、酒。"
+      ]
+    }
+  },
+
+  13: {
+    name:"丁家大宅", enName:"Ding Family Mansion",
+    history:{
+      subtitle:"Ding Family Mansion — Full Guide Script",
+      paras:[
+        "This is a 'Jinshi' Mansion, meaning the owner passed the highest Imperial Exam. It is very prestigious. The house is long and deep, with three halls and courtyards. It connects the busy street in the front to the quiet lane in the back. It shows how rich merchants lived 100 years ago—combining a shop in front and a home in the back.",
+        "This is a deep [long house|長條街屋]. The shop used [numbered wooden boards|有編號的木板] for doors.",
+        "💡 建築格局極深：這是一棟深達70至80公尺的典型「長條街屋」，從最前方的商業店面一路延伸到後方的純住宅區（四合院）。前方店面做生意時，木板門需一塊塊拆卸，因尺寸不同，木板上皆寫有「男一、男二」等編號，必須按編號順序才能順利組裝。",
+        "They built [skywells|天井] for light and two high [walls|高牆] to stop bad guys.",
+        "💡 採光與防禦設計：由於早年房屋狹長且無電燈，屋內設有「樓井」（樓地板開洞加上天窗）及「天井」（半戶外空間）來達到採光與通風的效果。身為大戶人家，防禦工事也特別講究，後院設有兩道高牆，若翻越第一道牆，還會被第二道牆擋住。",
+        "Their ancestors were Arab [Muslims|穆斯林]. They [assimilated|漢化] over time and now eat pork.",
+        "💡 家族的混血身世：丁家祖先是經由海上絲路到泉州經商的阿拉伯人（穆斯林），與當地人通婚後定居，後來才搬遷至鹿港。因為具有穆斯林血統，祖先原本不以豬肉祭祀，但因在台灣漢化已深，後代其實已照常食用豬肉。",
+        "They had a huge [rice barn|穀倉] for workers. One member passed the [imperial exam|進士] but chose to be a [principal|院長].",
+        "💡 財力與地位象徵：屋內保留了巨大的穀倉，顯示家族不僅做生意，還養了非常多工人與手下。家族中曾有人考取「進士」，具備擔任縣長的資格，但他選擇放棄官職，回台灣擔任彰化最高學府「白沙書院」的掌教（院長）。",
+        "The [living room|神明廳] has strict rules: the left side is for the [male master|男主人], and the right side is for the [female master|女主人].",
+        "💡 傳統禮俗佈置：神明廳的佈置嚴格遵守傳統，正中間供奉神明，兩側遵循「左青龍、右白虎」與「男左女右」的規矩。左邊（龍邊）固定懸掛書法與男主人照片；右邊（虎邊）則懸掛畫作與女主人照片。"
+      ]
+    },
+    exp:{
+      subtitle:"贈紀念品 & 台灣景點介紹 (Souvenirs + Taiwan Landmarks)",
+      paras:[
+        "Hello! Please look at these [souvenirs|紀念品]. These are [keychains|鑰匙圈] and [magnets|磁鐵] of the most famous places in Taiwan.",
+        "Taipei 101 is our most famous [landmark|地標]. It is one of the [tallest buildings|最高的大樓] in the world!",
+        "Alishan is a high mountain with a beautiful [sunrise|日出]. You can ride a [forest train|森林小火車].",
+        "Jiufen has [narrow streets|窄窄的小路] and beautiful [red lanterns|紅燈籠].",
+        "Pingxi is where people fly [Sky Lanterns|天燈] to make [wishes|願望].",
+        "These places are very special. Do you like [mountains|山] or the [city|城市] more?"
+      ]
+    },
+    quiz:{
+      subtitle:"建築防禦問答 (Architecture Q&A)",
+      paras:[
+        "(Q1) This house is very long. It has many high [walls|牆壁] and [doors|門]. Why did they build so many doors?",
+        "It is for [safety|安全]. They were very rich, so they wanted to stop bad guys.",
+        "(Q2) Look at this big wooden [box|箱子]. Can you guess what they put inside?",
+        "[Rice|白米]! This family was very rich. They had many [workers|工人], so they needed a lot of rice."
+      ]
+    }
+  },
+
+  14: {
+    name:"鄭興珍", enName:"Cheng Hsing Jen Pastry",
+    chat:{
+      topic:"Sweets & Souvenirs",
+      en:"Do you like cookies? What do you want to buy for your family? This shop is very famous and over 130 years old!",
+      zh:"你喜歡餅乾嗎？你想買什麼給家人？這家店非常有名，已經超過130年了！"
+    },
+    history:{
+      subtitle:"Phoenix Eye Cake — Guide Script",
+      paras:[
+        "This shop is famous for 'Phoenix Eye Cake' (Fengyan Gao). It was founded in 1887. The cake is made of rice flour and white sugar. It is very dry and delicate, designed to melt in your mouth, not to be chewed. In the past, only rich scholars could eat this while drinking tea and composing poems."
+      ]
+    },
+    food:{
+      subtitle:"鳳眼糕品嚐 (Phoenix Eye Cake Tasting)",
+      paras:[
+        "This is [Phoenix Eye Cake|鳳眼糕]. It is a very [elegant|優雅的] traditional dessert.",
+        "It looks like the [eye of a phoenix|鳳凰的眼睛]. It melts in your mouth and goes perfectly with tea.",
+        "Please [taste|品嚐] it! What kind of [traditional desserts|傳統甜點] do you have at home?"
+      ]
+    }
+  }
+};
+
+// ══════════════════════════════════════════════════════════
+//  SMALL TALK DATA (四大主題口說練習)
+// ══════════════════════════════════════════════════════════
+const SMALL_TALK_DATA = [
+  {
+    id: "bus",
+    icon: "🚌",
+    title: "搭公車 & 交通",
+    enTitle: "Bus & Transportation",
+    color: "bg-blue-100 border-blue-300 text-blue-800",
+    headerBg: "linear-gradient(135deg,#1e40af,#3b82f6)",
+    sentences: [
+      { en: "In Taiwan, you need to tap your card when you get on AND off the bus.", ch: "在台灣，上下公車都要刷卡。" },
+      { en: "Excuse me, does this bus go to the train station?", ch: "不好意思，這班公車有到火車站嗎？" },
+      { en: "The bus system in Taiwan is very convenient. You can use an EasyCard to pay.", ch: "台灣的公車系統很方便，你可以用悠遊卡付費。" },
+      { en: "I usually take the MRT in Taipei. It is fast and clean.", ch: "我在台北通常搭捷運，又快又乾淨。" },
+      { en: "Have you tried riding a scooter? Scooters are everywhere in Taiwan!", ch: "你有騎過機車嗎？台灣到處都是機車！" },
+      { en: "Taiwan's High Speed Rail can go from Taipei to Kaohsiung in just 90 minutes.", ch: "台灣高鐵從台北到高雄只要90分鐘。" },
+      { en: "I think traffic in Taiwan is a little crazy, especially the scooters!", ch: "我覺得台灣交通有點瘋狂，尤其是機車！" },
+      { en: "Do you have a similar bus system in your country?", ch: "你的國家有類似的公車系統嗎？" },
+      { en: "In your country, what is the most common way to travel?", ch: "在你的國家，最常見的交通方式是什麼？" },
+      { en: "What do you think about traffic in Taiwan?", ch: "你覺得台灣的交通怎麼樣？" }
+    ]
+  },
+  {
+    id: "culture",
+    icon: "🍜",
+    title: "食物、旅遊、青年文化",
+    enTitle: "Food, Travel & Youth Culture",
+    color: "bg-pink-100 border-pink-300 text-pink-800",
+    headerBg: "linear-gradient(135deg,#9d174d,#ec4899)",
+    sentences: [
+      { en: "What is the most popular food in your country?", ch: "你們國家最受歡迎的食物是什麼？" },
+      { en: "Have you tried bubble tea? It is the most famous drink from Taiwan.", ch: "你喝過珍珠奶茶嗎？它是台灣最有名的飲料。" },
+      { en: "Young people in Taiwan love going to night markets with friends.", ch: "台灣年輕人喜歡和朋友去逛夜市。" },
+      { en: "What do university students in your country do for fun on weekends?", ch: "你們國家的大學生週末做什麼？" },
+      { en: "Is there a famous travel place in your country that I should visit?", ch: "你的國家有什麼我應該去的著名旅遊景點嗎？" },
+      { en: "In Taiwan, many young people enjoy hiking and taking photos of nature.", ch: "在台灣，很多年輕人喜歡爬山和拍大自然的照片。" },
+      { en: "K-pop and anime are very popular among young people here. How about your country?", ch: "韓國流行音樂和動漫在這裡很受年輕人歡迎。你的國家呢？" },
+      { en: "What social media apps do young people use in your country?", ch: "你們國家的年輕人用什麼社群軟體？" },
+      { en: "Do you like spicy food? Taiwanese food is usually not very spicy.", ch: "你喜歡吃辣嗎？台灣食物通常不太辣。" },
+      { en: "What is a must-try street food in your hometown?", ch: "你家鄉有什麼必吃的街頭小吃？" }
+    ]
+  },
+  {
+    id: "taboo",
+    icon: "🚫",
+    title: "各國飲食禁忌",
+    enTitle: "Dietary Taboos Around the World",
+    color: "bg-amber-100 border-amber-300 text-amber-800",
+    headerBg: "linear-gradient(135deg,#92400e,#f59e0b)",
+    sentences: [
+      { en: "🇮🇩 In Indonesia, most people are Muslim. They do not eat pork.", ch: "在印尼，大多數人是穆斯林，他們不吃豬肉。", section: "Indonesia 印尼" },
+      { en: "🇮🇩 Their food must be halal, which means it follows Islamic rules.", ch: "他們的食物必須是清真的，意思是符合伊斯蘭教規定。" },
+      { en: "🇮🇩 Many Indonesians also avoid alcohol because of their religion.", ch: "許多印尼人也因為宗教而避免喝酒。" },
+      { en: "🇮🇳 In India, many people are Hindu. They do not eat beef because cows are sacred.", ch: "在印度，很多人是印度教徒，他們不吃牛肉，因為牛是神聖的。", section: "India 印度" },
+      { en: "🇮🇳 Many Indians are vegetarian. They eat a lot of rice, lentils, and vegetables.", ch: "許多印度人是素食者，他們吃很多米飯、扁豆和蔬菜。" },
+      { en: "🇮🇳 Some Indians also avoid garlic and onion for religious reasons.", ch: "有些印度人也因為宗教原因而避免吃大蒜和洋蔥。" },
+      { en: "🇩🇪 Germans love bread, sausages, and beer. There are not many strict food taboos.", ch: "德國人喜歡麵包、香腸和啤酒。飲食禁忌不多。", section: "Germany 德國" },
+      { en: "🇩🇪 Some Germans are vegan or vegetarian for health or environmental reasons.", ch: "有些德國人因為健康或環保而吃素。" },
+      { en: "🇰🇷 In Korea, there are no major food taboos, but sharing dishes is very common.", ch: "在韓國沒有重大飲食禁忌，但共享菜餚非常普遍。", section: "South Korea 南韓" },
+      { en: "🇰🇷 Koreans eat a lot of kimchi, rice, and soup. Spicy food is very popular.", ch: "韓國人吃很多泡菜、白飯和湯。辣的食物非常受歡迎。" },
+      { en: "Do you have any special food rules in your culture?", ch: "你的文化中有什麼特別的飲食規定嗎？" }
+    ]
+  },
+  {
+    id: "greetings",
+    icon: "👋",
+    title: "四國打招呼",
+    enTitle: "Greetings in 4 Languages",
+    color: "bg-green-100 border-green-300 text-green-800",
+    headerBg: "linear-gradient(135deg,#166534,#22c55e)",
+    sentences: [
+      { en: "🇮🇩 In Indonesian, 'Hello' is 'Halo'.", ch: "印尼語的「你好」是「Halo」。", section: "Indonesia 印尼語" },
+      { en: "🇮🇩 'Goodbye' is 'Selamat tinggal'.", ch: "「再見」是「Selamat tinggal」。" },
+      { en: "🇮🇩 'Thank you' is 'Terima kasih'.", ch: "「謝謝」是「Terima kasih」。" },
+      { en: "🇮🇳 In Hindi, 'Hello' is 'Namaste'.", ch: "印度語的「你好」是「Namaste」。", section: "India 印度語" },
+      { en: "🇮🇳 'Goodbye' is 'Alvida'.", ch: "「再見」是「Alvida」。" },
+      { en: "🇮🇳 'Thank you' is 'Dhanyavaad'.", ch: "「謝謝」是「Dhanyavaad」。" },
+      { en: "🇩🇪 In German, 'Hello' is 'Hallo'.", ch: "德語的「你好」是「Hallo」。", section: "Germany 德語" },
+      { en: "🇩🇪 'Goodbye' is 'Auf Wiedersehen'.", ch: "「再見」是「Auf Wiedersehen」。" },
+      { en: "🇩🇪 'Thank you' is 'Danke'.", ch: "「謝謝」是「Danke」。" },
+      { en: "🇰🇷 In Korean, 'Hello' is 'Annyeonghaseyo'.", ch: "韓語的「你好」是「Annyeonghaseyo」。", section: "South Korea 韓語" },
+      { en: "🇰🇷 'Goodbye' is 'Annyeonghi gaseyo'.", ch: "「再見」是「Annyeonghi gaseyo」。" },
+      { en: "🇰🇷 'Thank you' is 'Gamsahamnida'.", ch: "「謝謝」是「Gamsahamnida」。" },
+      { en: "Can you teach me how to say 'Hello' in your language?", ch: "你可以教我用你的語言說「你好」嗎？" }
+    ]
+  }
+];
+
+// ══════════════════════════════════════════════════════════
+//  COLUMN CONFIG
+// ══════════════════════════════════════════════════════════
+const COLUMNS = [
+  { key:"chat",    label:"💬 聊天",   en:"Chat",      color:"bg-sky-100 text-sky-800 border-sky-400"       },
+  { key:"history", label:"📖 導覽",   en:"Guide",     color:"bg-orange-100 text-orange-800 border-orange-400" },
+  { key:"exp",     label:"🎯 體驗",   en:"Activity",  color:"bg-amber-100 text-amber-800 border-amber-400"  },
+  { key:"quiz",    label:"❓ 問答",   en:"Q&A",       color:"bg-yellow-100 text-yellow-800 border-yellow-400" },
+  { key:"food",    label:"🍽 美食",   en:"Food",      color:"bg-red-100 text-red-800 border-red-400"        }
+];
+
+// ══════════════════════════════════════════════════════════
+//  UTILITY: parse markup [english|chinese] in a paragraph
+// ══════════════════════════════════════════════════════════
+function parseParagraph(text) {
+  const parts = [];
+  const re = /\[([^\|]+)\|([^\]]+)\]/g;
+  let last = 0, m;
+  while ((m = re.exec(text)) !== null) {
+    if (m.index > last) parts.push({ type:'text', val: text.slice(last, m.index) });
+    parts.push({ type:'hw', en: m[1], zh: m[2] });
+    last = m.index + m[0].length;
+  }
+  if (last < text.length) parts.push({ type:'text', val: text.slice(last) });
+  return parts;
+}
+
+// ══════════════════════════════════════════════════════════
+//  COMPONENTS
+// ══════════════════════════════════════════════════════════
+
+function speakText(text, rate=0.88) {
+  const clean = text.replace(/\[([^\|]+)\|[^\]]+\]/g,'$1')
+                    .replace(/💡[^\n]*/g,'').replace(/📌[^\n]*/g,'').trim();
+  window.speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(clean);
+  u.lang='en-US'; u.rate=rate;
+  window.speechSynthesis.speak(u);
+}
+
+function HighlightWord({ en, zh }) {
+  const [show, setShow] = useState(false);
+  return (
+    <span className="relative" style={{display:'inline'}}>
+      <span className="hw" onClick={e => { e.stopPropagation(); speakText(en, 0.8); setShow(s=>!s); }}>{en}</span>
+      {show && (
+        <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-1 text-white text-sm rounded shadow-lg whitespace-nowrap z-30 pointer-events-none"
+          style={{background:'#7c2d12'}}
+          style={{fontSize:'13px'}}>
+          {zh}
+        </span>
+      )}
+    </span>
+  );
+}
+
+function InteractivePara({ text, onWordClick, activeWord }) {
+  const parts = parseParagraph(text);
+  return (
+    <span className="leading-relaxed">
+      {parts.map((p, i) => {
+        if (p.type === 'hw') return <HighlightWord key={i} en={p.en} zh={p.zh} />;
+        // Split plain text into clickable words
+        return p.val.split(/(\s+)/).map((tok, j) => {
+          if (/^\s+$/.test(tok)) return <span key={j}>{tok}</span>;
+          const clean = tok.replace(/^[^a-zA-Z']+|[^a-zA-Z']+$/g,'').toLowerCase();
+          if (!clean) return <span key={j}>{tok}</span>;
+          const isActive = activeWord === clean;
+          return (
+            <span key={j} className={`plain-w ${isActive ? 'bg-amber-200 text-amber-900' : ''}`}
+              onClick={e => { e.stopPropagation(); onWordClick(clean, tok); }}>
+              {tok}
+            </span>
+          );
+        });
+      })}
+    </span>
+  );
+}
+
+function CultureNote({ text }) {
+  const [open, setOpen] = useState(false);
+  const title = text.split('：')[0] || text.slice(0,20);
+  return (
+    <div className="my-2 rounded-lg border border-amber-300 overflow-hidden">
+      <button className="w-full flex items-center gap-2 px-3 py-2 bg-amber-50 hover:bg-amber-100 transition-colors text-left"
+        onClick={() => setOpen(o=>!o)}>
+        <span className="text-amber-600">💡</span>
+        <span className="flex-1 text-sm font-bold text-amber-800 truncate">{title}…</span>
+        <span className="text-amber-500 text-xs">{open ? '▲' : '▼'}</span>
+      </button>
+      {open && (
+        <div className="px-4 py-3 bg-amber-50 text-stone-600 text-sm leading-relaxed">
+          {text}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function PinNote({ text }) {
+  return (
+    <div className="my-2 rounded-lg border border-blue-300 bg-blue-50 px-4 py-3 text-blue-800 text-sm leading-relaxed">
+      {text}
+    </div>
+  );
+}
+
+function AudioBtn({ text, small=false }) {
+  const [playing, setPlaying] = useState(false);
+  const handle = (e) => {
+    e.stopPropagation();
+    window.speechSynthesis.cancel();
+    if (playing) { setPlaying(false); return; }
+    const clean = text.replace(/\[([^\|]+)\|[^\]]+\]/g,'$1')
+                      .replace(/💡[^\n]*/g,'').replace(/📌[^\n]*/g,'').trim();
+    const u = new SpeechSynthesisUtterance(clean);
+    u.lang='en-US'; u.rate=0.88;
+    u.onend = () => setPlaying(false);
+    u.onerror = () => setPlaying(false);
+    setPlaying(true);
+    window.speechSynthesis.speak(u);
+  };
+  const sz = small ? "p-1" : "p-1.5";
+  return (
+    <button onClick={handle}
+      className={`shrink-0 ${sz} rounded-full border transition-colors
+        ${playing ? 'bg-red-700 text-white border-red-700' : 'bg-white text-amber-700 border-amber-500 hover:bg-amber-50'}`}
+      title="Listen">
+      {playing ? '⏹' : '🔊'}
+    </button>
+  );
+}
+
+function WordCard({ info, onClose }) {
+  if (!info) return null;
+  const speak = () => {
+    window.speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(info.word);
+    u.lang='en-US'; u.rate=0.8;
+    window.speechSynthesis.speak(u);
+  };
+  return (
+    <div className="dict-card fixed bottom-4 left-1/2 w-[90%] max-w-xs bg-white rounded-2xl shadow-2xl border border-amber-200 z-50 overflow-hidden"
+      onClick={e => e.stopPropagation()}>
+      <div className="bg-amber-100 px-4 py-2 flex justify-between items-center border-b border-amber-200">
+        <span className="text-xs font-bold text-amber-700 tracking-widest uppercase">Dictionary</span>
+        <button onClick={onClose} className="text-amber-600 hover:text-red-700 font-bold text-lg leading-none">×</button>
+      </div>
+      <div className="p-4">
+        <div className="flex justify-between items-center mb-2">
+          <h3 className="text-2xl font-bold text-stone-800">{info.word}</h3>
+          <button onClick={speak} className="text-amber-600 hover:text-amber-800 text-xl">🔊</button>
+        </div>
+        {info.found ? (
+          <>
+            <div className="text-xs text-stone-400 uppercase tracking-wider mb-1">{info.data.pos}</div>
+            <div className="text-lg text-red-800 font-medium border-l-4 border-amber-400 pl-3">{info.data.ch}</div>
+          </>
+        ) : (
+          <div className="text-stone-400 italic text-sm">字典擴充中，已播放發音。</div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── Single paragraph row ──
+function ParaRow({ text, onWordClick, activeWord }) {
+  if (text.startsWith('💡')) return <CultureNote text={text.slice(1).trim()} />;
+  if (text.startsWith('📌')) return <PinNote text={text.slice(1).trim()} />;
+  if (text.startsWith('—')) return (
+    <div className="mt-6 mb-2 text-center text-stone-400 text-sm font-bold tracking-wider border-t-2 border-dashed border-stone-300 pt-3">{text}</div>
+  );
+  return (
+    <div className="flex items-start gap-3 mb-4 p-4 bg-white rounded-xl shadow-sm border border-stone-200">
+      <div className="flex-1 text-lg leading-loose text-stone-800">
+        <InteractivePara text={text} onWordClick={onWordClick} activeWord={activeWord} />
+      </div>
+      <AudioBtn text={text} />
+    </div>
+  );
+}
+
+// ══════════════════════════════════════════════════════════
+//  TASK PAGE
+// ══════════════════════════════════════════════════════════
+function TaskPage({ spotId, colKey, seat, onBack }) {
+  const [wordInfo, setWordInfo] = useState(null);
+  const col = COLUMNS.find(c => c.key === colKey);
+  const spot = SPOT_CONTENT[spotId];
+  const taskData = spot ? spot[colKey] : null;
+
+  const handleWordClick = useCallback((clean, original) => {
+    window.speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(clean);
+    u.lang='en-US'; u.rate=0.8;
+    window.speechSynthesis.speak(u);
+    setWordInfo({ word: clean, found: !!vocabDB[clean], data: vocabDB[clean] || null });
+  }, []);
+
+  const activeWord = wordInfo?.word;
+
+  useEffect(() => { window.scrollTo(0,0); }, []);
+
+  if (!spot || !taskData) return (
+    <div className="min-h-screen bg-orange-50 flex flex-col items-center justify-center p-8">
+      <p className="text-orange-400 mb-4">此任務暫無內容。</p>
+      <button onClick={onBack} className="px-5 py-2 rounded-xl text-white font-bold"
+        style={{background:'#c2410c'}}>🏠 返回首頁</button>
+    </div>
+  );
+
+  const isChat = colKey === 'chat';
+
+  return (
+    <div className="min-h-screen bg-orange-50 pb-24 fade-in" onClick={() => setWordInfo(null)}>
+      {/* Header */}
+      <div className="sticky top-0 z-20 text-white px-4 py-3 shadow-lg"
+        style={{background:'linear-gradient(135deg,#7c2d12,#c2410c)'}}>
+        <div className="flex items-center gap-3 max-w-xl mx-auto">
+          <button onClick={onBack}
+            className="shrink-0 flex items-center gap-1 px-3 py-2 rounded-lg text-sm font-bold text-orange-900 border-2 border-orange-300 transition-colors hover:border-white"
+            style={{background:'#fed7aa'}}>
+            ← 首頁
+          </button>
+          <div className="flex-1 min-w-0">
+            <div className="text-xs text-orange-200 uppercase tracking-wider">座號 {seat} · 站點 {spotId}</div>
+            <div className="font-bold text-base truncate">{spot.enName}</div>
+            <div className="text-xs text-orange-200">{spot.name}</div>
+          </div>
+          <div className={`shrink-0 px-3 py-1 rounded-full text-xs font-bold border-2 ${col.color}`}>
+            {col.label}
+          </div>
+        </div>
+      </div>
+
+      <div className="max-w-xl mx-auto px-4 pt-4" onClick={e => e.stopPropagation()}>
+        {/* Subtitle */}
+        <div className="mb-5 text-center">
+          <h2 className="text-xl font-bold text-stone-800">{taskData.subtitle || (isChat ? taskData.topic : '')}</h2>
+          <p className="text-sm text-stone-400 mt-2">💡 點擊任意英文單字，可查詢字典並聽發音</p>
+        </div>
+
+        {/* CHAT: small talk + general questions */}
+        {isChat && (
+          <>
+            <div className="mb-4 p-5 bg-sky-50 rounded-2xl border border-sky-200 shadow-sm">
+              <div className="text-sm font-bold text-sky-700 mb-3 uppercase tracking-wider">🎤 Ice Breaker — {taskData.topic}</div>
+              <div className="flex items-start gap-3 mb-3">
+                <div className="flex-1 text-lg leading-loose text-stone-800">
+                  <InteractivePara text={taskData.en} onWordClick={handleWordClick} activeWord={activeWord} />
+                </div>
+                <AudioBtn text={taskData.en} />
+              </div>
+              <div className="text-base text-stone-500 border-t border-sky-200 pt-3 bg-white px-3 py-2 rounded-lg">{taskData.zh}</div>
+            </div>
+          </>
+        )}
+
+        {/* NON-CHAT: paragraphs (supports per-seat content via seatParas) */}
+        {!isChat && (taskData.paras || taskData.seatParas) && (
+          <div className="space-y-1" onClick={e => e.stopPropagation()}>
+            {(taskData.seatParas ? (taskData.seatParas[seat] || []) : taskData.paras).map((p, i) => (
+              <ParaRow key={i} text={p} onWordClick={handleWordClick} activeWord={activeWord} />
+            ))}
+          </div>
+        )}
+
+        {/* Universal Reminder */}
+        <div className="mt-8 p-5 rounded-2xl text-white text-base leading-relaxed shadow-lg"
+          style={{background:'linear-gradient(135deg,#7f1d1d,#b91c1c)'}}>
+          <div className="font-bold mb-2 text-red-200 text-sm uppercase tracking-wider">⚠️ 全體提醒 Universal Reminder</div>
+          自己的站點走完，一定要<strong>送來賓去下一站</strong>，要在下一站旁邊跟聽和幫忙，隨時 <strong>stand by</strong>！
+        </div>
+      </div>
+
+      {/* Word Dictionary Card */}
+      {wordInfo && <WordCard info={wordInfo} onClose={() => setWordInfo(null)} />}
+
+      {/* Fixed bottom back button */}
+      {!wordInfo && (
+        <div className="fixed bottom-0 left-0 right-0 z-40 flex justify-center pb-5 pt-3"
+          style={{background:'linear-gradient(to top, rgba(255,247,237,1) 65%, rgba(255,247,237,0))'}}>
+          <button onClick={onBack}
+            className="flex items-center gap-2 px-10 py-3.5 font-bold text-base rounded-2xl shadow-xl border-2 transition-all hover:scale-105 active:scale-95"
+            style={{background:'linear-gradient(135deg,#c2410c,#ea580c)', color:'white', borderColor:'#fed7aa'}}>
+            🏠 返回首頁
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ══════════════════════════════════════════════════════════
+//  SMALL TALK PAGE
+// ══════════════════════════════════════════════════════════
+function SmallTalkPage({ topicId, onBack }) {
+  const [wordInfo, setWordInfo] = useState(null);
+  const topic = SMALL_TALK_DATA.find(t => t.id === topicId);
+
+  const handleWordClick = useCallback((clean, original) => {
+    window.speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(clean);
+    u.lang='en-US'; u.rate=0.8;
+    window.speechSynthesis.speak(u);
+    setWordInfo({ word: clean, found: !!vocabDB[clean], data: vocabDB[clean] || null });
+  }, []);
+
+  const activeWord = wordInfo?.word;
+
+  useEffect(() => { window.scrollTo(0,0); }, []);
+
+  if (!topic) return null;
+
+  return (
+    <div className="min-h-screen bg-orange-50 pb-24 fade-in" onClick={() => setWordInfo(null)}>
+      <div className="sticky top-0 z-20 text-white px-4 py-3 shadow-lg"
+        style={{background: topic.headerBg}}>
+        <div className="flex items-center gap-3 max-w-xl mx-auto">
+          <button onClick={onBack}
+            className="shrink-0 flex items-center gap-1 px-3 py-2 rounded-lg text-sm font-bold text-orange-900 border-2 border-orange-300 transition-colors hover:border-white"
+            style={{background:'#fed7aa'}}>
+            ← 首頁
+          </button>
+          <div className="flex-1 min-w-0">
+            <div className="text-2xl">{topic.icon}</div>
+          </div>
+          <div className="text-right">
+            <div className="font-bold text-base">{topic.enTitle}</div>
+            <div className="text-sm opacity-80">{topic.title}</div>
+          </div>
+        </div>
+      </div>
+
+      <div className="max-w-xl mx-auto px-4 pt-4" onClick={e => e.stopPropagation()}>
+        <p className="text-sm text-stone-400 mb-5 text-center">💡 點擊任意英文單字，可查詢字典並聽發音</p>
+
+        <div className="space-y-2">
+          {topic.sentences.map((s, i) => (
+            <React.Fragment key={i}>
+              {s.section && (
+                <div className="mt-5 mb-2 text-center text-stone-500 text-sm font-bold tracking-wider border-t-2 border-dashed border-stone-300 pt-3">
+                  {s.section}
+                </div>
+              )}
+              <div className="flex items-start gap-3 p-4 bg-white rounded-xl shadow-sm border border-stone-200">
+                <div className="flex-1">
+                  <div className="text-lg leading-loose text-stone-800 mb-1">
+                    <InteractivePara text={s.en} onWordClick={handleWordClick} activeWord={activeWord} />
+                  </div>
+                  <div className="text-base text-stone-500 border-t border-stone-100 pt-2 px-1">{s.ch}</div>
+                </div>
+                <AudioBtn text={s.en} />
+              </div>
+            </React.Fragment>
+          ))}
+        </div>
+      </div>
+
+      {wordInfo && <WordCard info={wordInfo} onClose={() => setWordInfo(null)} />}
+
+      {!wordInfo && (
+        <div className="fixed bottom-0 left-0 right-0 z-40 flex justify-center pb-5 pt-3"
+          style={{background:'linear-gradient(to top, rgba(255,247,237,1) 65%, rgba(255,247,237,0))'}}>
+          <button onClick={onBack}
+            className="flex items-center gap-2 px-10 py-3.5 font-bold text-base rounded-2xl shadow-xl border-2 transition-all hover:scale-105 active:scale-95"
+            style={{background:'linear-gradient(135deg,#c2410c,#ea580c)', color:'white', borderColor:'#fed7aa'}}>
+            🏠 返回首頁
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ══════════════════════════════════════════════════════════
+//  SUPPORT STAFF SECTION COMPONENT
+// ══════════════════════════════════════════════════════════
+function SupportCard({ person, isMine }) {
+  const [open, setOpen] = useState(isMine);
+  return (
+    <div className={`rounded-xl border-2 overflow-hidden shadow-sm transition-all ${isMine ? 'border-yellow-400 shadow-md' : open ? 'border-purple-400' : 'border-purple-200'}`}
+      style={{background: isMine ? '#fffbeb' : '#faf5ff'}}>
+      <button className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-purple-50 transition-colors"
+        onClick={() => setOpen(o=>!o)}>
+        <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-base border-2 ${isMine ? 'border-yellow-400 text-yellow-900' : 'border-purple-300 text-purple-900'}`}
+          style={{background: isMine ? '#fde68a' : '#e9d5ff'}}>
+          {person.seat}
+        </div>
+        <div className="flex-1">
+          <div className="flex items-center gap-2">
+            <span className="font-bold text-purple-900 text-base">{person.role}</span>
+            {isMine && <span className="px-2 py-0.5 rounded text-xs font-bold bg-yellow-300 text-yellow-900">你的工作</span>}
+          </div>
+          <div className="text-purple-600 text-sm">站點：{person.spotName || '全場'}</div>
+        </div>
+        <span className="text-purple-400 text-sm">{open ? '▲' : '▼'}</span>
+      </button>
+      {open && (
+        <div className="px-4 pb-4 pt-1 border-t border-purple-100">
+          {person.duties && person.duties.length > 0 ? (
+            <ul className="space-y-2 mt-2">
+              {person.duties.map((d, i) => (
+                <li key={i} className="flex items-start gap-2 text-base text-purple-800">
+                  <span className="text-purple-400 mt-1">▸</span>
+                  <span>{d}</span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-purple-400 italic text-sm mt-2">工作內容待填入</p>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function SupportSection({ selectedSeat }) {
+  const [open, setOpen] = useState(false);
+  const myRole = SUPPORT_STAFF.find(p => p.seat === selectedSeat);
+
+  if (SUPPORT_STAFF.length === 0) return (
+    <div className="bg-white rounded-2xl border-2 border-dashed border-purple-200 p-5 mb-5 text-center">
+      <div className="text-purple-400 text-2xl mb-2">🔧</div>
+      <div className="text-purple-700 font-bold text-base mb-1">後勤人員工作分配</div>
+      <div className="text-purple-400 text-sm">老師上傳名單後即會顯示</div>
+    </div>
+  );
+
+  return (
+    <div className="bg-white rounded-2xl border-2 border-purple-200 overflow-hidden mb-5 shadow-sm">
+      <button className="w-full flex items-center gap-3 px-5 py-4 text-left"
+        style={{background:'linear-gradient(90deg,#4c1d95,#7c3aed)'}}
+        onClick={() => setOpen(o=>!o)}>
+        <span className="text-2xl">🔧</span>
+        <div className="flex-1">
+          <div className="text-white font-bold text-base">後勤人員工作分配</div>
+          <div className="text-purple-200 text-sm">{SUPPORT_STAFF.length} 位同學 · 點擊展開</div>
+        </div>
+        {myRole && (
+          <span className="px-2 py-1 rounded-lg text-xs font-bold bg-yellow-300 text-yellow-900">你在這裡！</span>
+        )}
+        <span className="text-purple-200 text-sm">{open ? '▲' : '▼'}</span>
+      </button>
+      {open && (
+        <div className="p-4 grid gap-3">
+          {SUPPORT_STAFF.map((p, i) => (
+            <SupportCard key={i} person={p} isMine={selectedSeat === p.seat} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ══════════════════════════════════════════════════════════
+//  HOME PAGE
+// ══════════════════════════════════════════════════════════
+function HomePage({ onNavigate, onSmallTalk }) {
+  const [selectedSeat, setSelectedSeat] = useState(null);
+
+  // Find all (spotId, colKey) pairs for a given seat
+  function findAssignments(seat) {
+    const result = [];
+    for (const [spotId, cols] of Object.entries(ASSIGNMENTS)) {
+      for (const [colKey, seats] of Object.entries(cols)) {
+        if (seats.includes(seat)) result.push({ spotId: parseInt(spotId), colKey });
+      }
+    }
+    return result;
+  }
+
+  const myAssignments = selectedSeat ? findAssignments(selectedSeat) : [];
+
+  function isMyCell(spotId, colKey) {
+    return myAssignments.some(a => a.spotId === spotId && a.colKey === colKey);
+  }
+
+  const spotIds = Object.keys(ASSIGNMENTS).map(Number);
+
+  return (
+    <div className="min-h-screen bg-orange-50 pb-10">
+      {/* Title Bar */}
+      <div className="text-white px-4 pt-6 pb-5 shadow-lg" style={{background:'linear-gradient(135deg, #7c2d12 0%, #c2410c 60%, #ea580c 100%)'}}>
+        <div className="max-w-3xl mx-auto text-center">
+          <div className="text-orange-200 text-xs tracking-widest uppercase mb-2">🏮 鹿港英語導覽活動 · 2026</div>
+          <h1 className="text-3xl font-bold tracking-wider mb-2">學生任務 App</h1>
+          <p className="text-orange-200 text-sm">選擇你的座號，找到你的任務，點擊查看腳本</p>
+        </div>
+      </div>
+
+      <div className="max-w-3xl mx-auto px-3 pt-4">
+        {/* Small Talk Section */}
+        <div className="bg-white rounded-2xl shadow-md border border-orange-200 p-5 mb-5">
+          <div className="text-sm font-bold text-orange-700 uppercase tracking-wider mb-1 text-center">
+            💬 Small Talk 口說練習
+          </div>
+          <div className="text-xs text-stone-400 text-center mb-4">點擊主題，練習跟來賓聊天的英文句子</div>
+          <div className="grid grid-cols-2 gap-3">
+            {SMALL_TALK_DATA.map(t => (
+              <button key={t.id} onClick={() => onSmallTalk(t.id)}
+                className={`flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all hover:scale-105 hover:shadow-md ${t.color}`}>
+                <span className="text-3xl">{t.icon}</span>
+                <span className="font-bold text-sm text-center leading-tight">{t.title}</span>
+                <span className="text-xs opacity-70">{t.enTitle}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Assignment Table */}
+        <div className="bg-white rounded-2xl shadow-md border border-orange-200 overflow-hidden mb-5">
+          <div className="px-4 py-3 border-b border-orange-200" style={{background:'linear-gradient(90deg,#7c2d12,#c2410c)'}}>
+            <span className="text-white font-bold text-base">📋 工作分配總表</span>
+            <span className="text-orange-200 text-sm ml-2">點座號進入腳本</span>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse">
+              <thead>
+                <tr style={{background:'linear-gradient(90deg,#431407,#9a3412)'}}>
+                  <th className="px-3 py-4 text-left text-sm font-bold sticky left-0 z-10 text-white min-w-[100px]"
+                    style={{background:'#431407'}}>站點</th>
+                  {COLUMNS.map(c => (
+                    <th key={c.key} className="px-3 py-4 text-center text-sm font-bold min-w-[88px] whitespace-nowrap text-white">
+                      <div className="text-base">{c.label}</div>
+                      <div className="text-orange-300 font-normal text-xs mt-0.5">{c.en}</div>
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {spotIds.map((spotId, idx) => {
+                  const spot = SPOT_CONTENT[spotId];
+                  const asgn = ASSIGNMENTS[spotId];
+                  return (
+                    <tr key={spotId} className={idx % 2 === 0 ? 'bg-orange-50' : 'bg-white'}>
+                      <td className="px-3 py-3 sticky left-0 z-10 font-bold border-r border-orange-100"
+                        style={{background: idx%2===0 ? '#fff7ed':'#ffffff'}}>
+                        <span className="text-orange-400 text-xs font-bold">#{spotId}</span>
+                        <div className="text-orange-900 text-sm leading-tight font-bold">{spot?.name || ''}</div>
+                        <div className="text-orange-500 text-xs">{spot?.enName || ''}</div>
+                      </td>
+                      {COLUMNS.map(col => {
+                        const seats = asgn?.[col.key];
+                        const isEmpty = !seats || seats.length === 0;
+                        if (isEmpty) return (
+                          <td key={col.key} className="px-2 py-3 text-center text-orange-200 text-base">—</td>
+                        );
+                        return (
+                          <td key={col.key} className="px-2 py-2 text-center">
+                            <div className="flex flex-wrap gap-1 justify-center">
+                              {seats.map(s => {
+                                const mine = selectedSeat === s;
+                                return (
+                                  <button key={s}
+                                    onClick={() => onNavigate({ spotId, colKey: col.key, seat: s })}
+                                    className={`px-3 py-2 rounded-lg text-sm font-bold border-2 transition-all
+                                      ${mine
+                                        ? 'bg-red-700 text-white border-red-700 scale-110 shadow-md ring-2 ring-orange-400 ring-offset-1'
+                                        : `${col.color} hover:opacity-80 hover:scale-105`}`}>
+                                    {s}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* Legend */}
+        <div className="bg-white rounded-2xl border border-orange-200 p-4 mb-5 shadow-sm">
+          <div className="text-sm font-bold text-orange-700 uppercase tracking-wider mb-3 text-center">欄位說明</div>
+          <div className="flex flex-wrap gap-2 justify-center">
+            {COLUMNS.map(c => (
+              <span key={c.key} className={`px-3 py-1.5 rounded-full text-sm font-bold border-2 ${c.color}`}>
+                {c.label}
+              </span>
+            ))}
+          </div>
+        </div>
+
+        {/* Support Staff Section 後勤人員 */}
+        <SupportSection selectedSeat={selectedSeat} />
+
+        {/* Reminder */}
+        <div className="p-5 rounded-2xl text-white text-base leading-relaxed shadow-lg mb-3"
+          style={{background:'linear-gradient(135deg,#7f1d1d,#b91c1c)'}}>
+          <div className="font-bold text-red-200 text-sm uppercase tracking-wider mb-2">⚠️ 全體提醒 Universal Reminder</div>
+          自己的站點走完，一定要<strong>送來賓去下一站</strong>，要在下一站旁邊跟聽和幫忙，隨時 <strong>stand by</strong>！
+        </div>
+
+        <div className="text-center text-orange-400 text-xs mt-4 pb-4">
+          🏮 鹿港高中 英語導覽 · 2026 春季
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ══════════════════════════════════════════════════════════
+//  APP ROOT
+// ══════════════════════════════════════════════════════════
+function App() {
+  const [page, setPage] = useState('home');
+  const [task, setTask] = useState(null);
+  const [talkId, setTalkId] = useState(null);
+
+  if (page === 'task' && task) {
+    return <TaskPage spotId={task.spotId} colKey={task.colKey} seat={task.seat}
+      onBack={() => { setPage('home'); }} />;
+  }
+  if (page === 'smalltalk' && talkId) {
+    return <SmallTalkPage topicId={talkId} onBack={() => { setPage('home'); }} />;
+  }
+  return <HomePage
+    onNavigate={info => { setTask(info); setPage('task'); }}
+    onSmallTalk={id => { setTalkId(id); setPage('smalltalk'); }}
+  />;
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>
